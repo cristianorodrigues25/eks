@@ -31,7 +31,6 @@ Este projeto demonstra a implementação completa de uma aplicação Laravel em 
 | CI/CD | GitHub Actions + OIDC | Integração nativa, sem secrets, autenticação segura |
 | Container Registry | Amazon ECR | Scan automático, integração AWS, menor latência |
 | Autenticação AWS | OIDC Provider | Zero secrets no GitHub, credenciais temporárias |
-| Database | RDS Aurora Serverless v2 | Auto-scaling, backup automático, alta disponibilidade |
 | Cache | ElastiCache Redis | Gerenciado, Multi-AZ, backup automático |
 | Monitoring | Prometheus + Grafana | Open source, integração com Kubernetes |
 
@@ -62,7 +61,6 @@ graph TB
                     HPA[HPA]
                 end
 
-                RDS[(RDS Aurora)]
                 REDIS[(ElastiCache Redis)]
             end
         end
@@ -88,7 +86,6 @@ graph TB
     GA --> ECR
     GA --> EKS
     ALB --> PODS
-    PODS --> RDS
     PODS --> REDIS
     PODS --> S3
     PODS --> CW
@@ -119,7 +116,6 @@ eks/
 │   │   ├── outputs.tf          # Outputs
 │   │   ├── vpc.tf              # Networking
 │   │   ├── eks.tf              # Cluster EKS
-│   │   ├── rds.tf              # Database
 │   │   └── elasticache.tf      # Redis
 │   │
 │   └── k8s/                     # Manifestos Kubernetes
