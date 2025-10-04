@@ -1,0 +1,60 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+CHANGELOG.md
+LICENSE
+
+# Laravel
+src/.env
+src/.env.local
+src/.env.*.local
+src/vendor
+src/node_modules
+src/storage/*.key
+src/storage/app/public/*
+src/storage/framework/cache/*
+src/storage/framework/sessions/*
+src/storage/framework/views/*
+src/storage/logs/*
+src/bootstrap/cache/*
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+src/phpunit.xml
+src/.phpunit.result.cache
+src/tests
+
+# Node
+src/npm-debug.log
+src/yarn-error.log
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Terraform
+infrastructure/
+*.tf
+*.tfstate
+*.tfstate.backup
+.terraform/
+
+# GitHub
+.github/
+
+# Build artifacts
+src/public/hot
+src/public/storage
+src/public/mix-manifest.json

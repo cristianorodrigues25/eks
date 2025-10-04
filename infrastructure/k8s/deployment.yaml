@@ -1,0 +1,194 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: laravel-app
+  namespace: default
+  labels:
+    app: laravel
+    environment: production
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: laravel
+  template:
+    metadata:
+      labels:
+        app: laravel
+        version: v1
+    spec:
+      # Service Account para IRSA (IAM Roles for Service Accounts)
+      serviceAccountName: laravel-app
+
+      # Anti-affinity para distribuir pods entre nodes
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - laravel
+              topologyKey: kubernetes.io/hostname
+
+      # Init container para aguardar banco de dados
+      initContainers:
+      - name: wait-for-db
+        image: busybox:1.35
+        command: ['sh', '-c', 'until nc -z $DB_HOST 3306; do echo aguardando banco de dados; sleep 2; done;']
+        env:
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: laravel-secrets
+              key: db-host
+
+      containers:
+      - name: laravel-app
+        image: docker.io/seu-usuario/laravel-eks-app:latest  # Substituir com sua imagem
+        imagePullPolicy: Always
+
+        ports:
+        - containerPort: 80
+          name: http
+          protocol: TCP
+
+        # Variáveis de ambiente
+        env:
+        - name: APP_ENV
+          value: "production"
+        - name: APP_DEBUG
+          value: "false"
+        - name: APP_KEY
+          valueFrom:
+            secretKeyRef:
+              name: laravel-secrets
+              key: app-key
+        - name: DB_CONNECTION
+          value: "mysql"
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: laravel-secrets
+              key: db-host
+        - name: DB_PORT
+          value: "3306"
+        - name: DB_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: laravel-secrets
+              key: db-database
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: laravel-secrets
+              key: db-username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: laravel-secrets
+              key: db-password
+        - name: REDIS_HOST
+          valueFrom:
+            secretKeyRef:
+              name: laravel-secrets
+              key: redis-host
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: laravel-secrets
+              key: redis-password
+        - name: REDIS_PORT
+          value: "6379"
+        - name: CACHE_DRIVER
+          value: "redis"
+        - name: SESSION_DRIVER
+          value: "redis"
+        - name: QUEUE_CONNECTION
+          value: "redis"
+
+        # Probes
+        livenessProbe:
+          httpGet:
+            path: /live
+            port: 80
+            httpHeaders:
+            - name: Host
+              value: localhost
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 80
+            httpHeaders:
+            - name: Host
+              value: localhost
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 80
+            httpHeaders:
+            - name: Host
+              value: localhost
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
+
+        # Resources
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+
+        # Volume mounts
+        volumeMounts:
+        - name: storage
+          mountPath: /var/www/html/storage/app
+        - name: cache
+          mountPath: /var/www/html/bootstrap/cache
+
+        # Lifecycle hooks
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 15"]
+
+      # Volumes
+      volumes:
+      - name: storage
+        persistentVolumeClaim:
+          claimName: laravel-storage-pvc
+      - name: cache
+        emptyDir: {}
+
+      # Security context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+
+      # Termination grace period
+      terminationGracePeriodSeconds: 30
